@@ -6,6 +6,7 @@ from typing import List
 import cv2
 import numpy as np
 
+# Keep parity with the legacy optimizer's 6x6 offset trial heuristic.
 from solar_backend.pipelines.placement import PlacementResult
 
 PLACEMENT_OFFSET_TRIALS = 6

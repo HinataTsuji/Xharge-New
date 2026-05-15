@@ -13,6 +13,8 @@ from solar_backend.pipelines.polygon_extraction import polygon_from_mask
 from solar_backend.utils.geometry import polygon_to_mask
 
 logger = logging.getLogger(__name__)
+MIN_REFINED_CONFIDENCE = 0.4
+MAX_REFINED_CONFIDENCE = 0.95
 
 
 def _fallback_refine_with_grabcut(image_bgr: np.ndarray, prompt_polygon: List[Tuple[float, float]]) -> np.ndarray:
@@ -63,5 +65,5 @@ def refine_roof_with_sam2(
     prompt_mask = polygon_to_mask(prompt_polygon, refined_mask.shape[1], refined_mask.shape[0])
     overlap = cv2.bitwise_and(prompt_mask, refined_mask)
     confidence = float(np.count_nonzero(overlap) / max(np.count_nonzero(prompt_mask), 1))
-    confidence = max(0.4, min(0.95, confidence))
+    confidence = max(MIN_REFINED_CONFIDENCE, min(MAX_REFINED_CONFIDENCE, confidence))
     return refined_mask, refined_polygon, confidence
