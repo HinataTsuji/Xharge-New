@@ -1,6 +1,7 @@
 """Model loading utilities with optional GPU and batching support."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -55,6 +56,16 @@ class ModelRegistry:
                 torch_dtype=dtype,
                 device_map="auto" if device == "cuda" else None,
             )
+            if settings.qwen_lora_adapter_path:
+                try:
+                    from peft import PeftModel  # type: ignore
+
+                    model = PeftModel.from_pretrained(model, settings.qwen_lora_adapter_path)
+                    if settings.qwen_lora_merge and hasattr(model, "merge_and_unload"):
+                        model = model.merge_and_unload()
+                    logger.info("Loaded Qwen LoRA adapter from %s", settings.qwen_lora_adapter_path)
+                except Exception as adapter_exc:  # pragma: no cover - optional dependency path
+                    logger.warning("Failed to load LoRA adapter %s: %s", settings.qwen_lora_adapter_path, adapter_exc)
             if device != "cuda":
                 model = model.to(device)
             processor = AutoProcessor.from_pretrained(settings.model_name)
@@ -127,6 +138,20 @@ class ModelRegistry:
             return json.loads(candidate)
         except json.JSONDecodeError:
             return {"raw": text}
+
+    async def infer_qwen_structured_async(
+        self,
+        prompt: str,
+        images: Iterable[Any],
+        max_new_tokens: int = 256,
+    ) -> List[dict[str, Any]]:
+        """Async wrapper for Qwen structured inference."""
+        return await asyncio.to_thread(
+            self.infer_qwen_structured,
+            prompt=prompt,
+            images=images,
+            max_new_tokens=max_new_tokens,
+        )
 
 
 model_registry = ModelRegistry()

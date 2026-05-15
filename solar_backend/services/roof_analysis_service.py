@@ -1,6 +1,7 @@
 """Business service that orchestrates roof analysis pipeline."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -68,6 +69,10 @@ class RoofAnalysisService:
             usable_mask=usable_mask,
             overlay_url=f"{settings.static_url_prefix}/{file_name}",
         )
+
+    async def analyze_async(self, image_bgr: np.ndarray, meters_per_pixel: float, backend: str = "auto") -> RoofAnalysisOutput:
+        """Run analysis in a worker thread to avoid blocking the event loop."""
+        return await asyncio.to_thread(self.analyze, image_bgr=image_bgr, meters_per_pixel=meters_per_pixel, backend=backend)
 
 
 roof_analysis_service = RoofAnalysisService()

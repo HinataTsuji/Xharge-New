@@ -62,6 +62,7 @@ class EstimatePanelsRequest(BaseModel):
         gt=0,
         description="Site-specific annual energy factor",
     )
+    placement_backend: Literal["raster", "opencv"] = "raster"
 
     @model_validator(mode="after")
     def ensure_image_size_reasonable(self) -> "EstimatePanelsRequest":

@@ -8,6 +8,7 @@ import cv2
 
 from solar_backend.core.config import settings
 from solar_backend.pipelines.placement import pack_panels
+from solar_backend.pipelines.placement_opencv import pack_panels_opencv
 from solar_backend.pipelines.postprocess import compute_usable_mask, obstacles_to_mask
 from solar_backend.pipelines.visualization import draw_panel_layout_overlay
 from solar_backend.utils.geometry import polygon_to_mask
@@ -40,12 +41,14 @@ class PanelEstimationService:
         col_spacing_m: float,
         panel_power_kw: float,
         annual_yield_factor_kwh_per_kw: float,
+        placement_backend: str = "raster",
     ) -> PanelEstimateOutput:
         roof_mask = polygon_to_mask(roof_polygon, image_width, image_height)
         obstacle_mask = obstacles_to_mask(obstacles=obstacles, width=image_width, height=image_height)
         usable_mask = compute_usable_mask(roof_mask=roof_mask, obstacle_mask=obstacle_mask)
 
-        placement = pack_panels(
+        placement_fn = pack_panels_opencv if placement_backend == "opencv" else pack_panels
+        placement = placement_fn(
             usable_mask=usable_mask,
             meters_per_pixel=meters_per_pixel,
             panel_width_m=panel_width_m,

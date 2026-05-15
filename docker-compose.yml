@@ -1,0 +1,21 @@
+services:
+  solar-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-solar-backend:latest
+    container_name: ai-solar-backend
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_DEVICE: "${MODEL_DEVICE:-cuda}"
+      MODEL_DTYPE: "${MODEL_DTYPE:-float16}"
+      QWEN_VL_MODEL: "${QWEN_VL_MODEL:-Qwen/Qwen2.5-VL-3B-Instruct}"
+      QWEN_LORA_ADAPTER: "${QWEN_LORA_ADAPTER:-}"
+      QWEN_LORA_MERGE: "${QWEN_LORA_MERGE:-false}"
+      OUTPUT_DIR: "/app/outputs"
+    volumes:
+      - ./outputs:/app/outputs
+    # Requires NVIDIA Container Toolkit on the host.
+    gpus: all
+    restart: unless-stopped
