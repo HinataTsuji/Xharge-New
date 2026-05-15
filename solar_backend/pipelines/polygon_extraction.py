@@ -8,6 +8,7 @@ import numpy as np
 from solar_backend.utils.geometry import mask_to_largest_polygon
 
 Point = Tuple[float, float]
+POLYGON_COORD_PRECISION = 3
 
 
 def clamp_polygon(points: Sequence[Point], width: int, height: int) -> List[Point]:
@@ -18,7 +19,7 @@ def clamp_polygon(points: Sequence[Point], width: int, height: int) -> List[Poin
     for x, y in points:
         cx = float(min(max(x, 0.0), width - 1))
         cy = float(min(max(y, 0.0), height - 1))
-        point = (round(cx, 3), round(cy, 3))
+        point = (round(cx, POLYGON_COORD_PRECISION), round(cy, POLYGON_COORD_PRECISION))
         if not deduped or deduped[-1] != point:
             deduped.append(point)
     if len(deduped) >= 2 and deduped[0] == deduped[-1]:

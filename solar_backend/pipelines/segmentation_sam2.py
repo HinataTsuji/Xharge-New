@@ -65,6 +65,7 @@ def refine_roof_with_sam2(
 
     prompt_mask = polygon_to_mask(prompt_polygon, refined_mask.shape[1], refined_mask.shape[0])
     overlap = cv2.bitwise_and(prompt_mask, refined_mask)
-    confidence = float(np.count_nonzero(overlap) / max(np.count_nonzero(prompt_mask), 1))
+    prompt_pixels = max(np.count_nonzero(prompt_mask), 1)
+    confidence = float(np.count_nonzero(overlap) / prompt_pixels)
     confidence = max(REFINED_CONFIDENCE_LOWER_BOUND, min(REFINED_CONFIDENCE_UPPER_BOUND, confidence))
     return refined_mask, refined_polygon, confidence
