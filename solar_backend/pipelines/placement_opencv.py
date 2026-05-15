@@ -50,9 +50,9 @@ def pack_panels_opencv(
         for ox in range(trials):
             placed: List[dict] = []
             occupancy.fill(0)
-            offset_den = max(trials - 1, 1)
-            x_offset = int(round((ox / offset_den) * step_x))
-            y_offset = int(round((oy / offset_den) * step_y))
+            offset_denominator = max(trials - 1, 1)
+            x_offset = int(round((ox / offset_denominator) * step_x))
+            y_offset = int(round((oy / offset_denominator) * step_y))
             for y in range(y_offset, h - panel_h_px + 1, step_y):
                 for x in range(x_offset, w - panel_w_px + 1, step_x):
                     area_px = panel_w_px * panel_h_px
