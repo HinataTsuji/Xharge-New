@@ -93,7 +93,8 @@ def test_estimate_panels_endpoint() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "success"
-    assert body["data"]["estimated_panel_count"] >= 0
+    assert body["data"]["estimated_panel_count"] > 0
+    assert len(body["data"]["panel_layout"]) == body["data"]["estimated_panel_count"]
     assert body["data"]["estimated_power_kw"] >= 0
     assert body["data"]["panel_layout_overlay_url"].startswith("/static/")
 

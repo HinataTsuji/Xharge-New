@@ -17,6 +17,8 @@ class Settings:
     device: str = os.getenv("MODEL_DEVICE", "cuda")
     qwen_lora_adapter_path: str | None = os.getenv("QWEN_LORA_ADAPTER")
     qwen_lora_merge: bool = os.getenv("QWEN_LORA_MERGE", "false").lower() in {"1", "true", "yes"}
+    sam2_model_config: str = os.getenv("SAM2_MODEL_CONFIG", "sam2_hiera_l.yaml")
+    sam2_checkpoint_path: str = os.getenv("SAM2_CHECKPOINT_PATH", "sam2_hiera_large.pt")
     output_dir: Path = Path(os.getenv("OUTPUT_DIR", "outputs"))
     static_url_prefix: str = "/static"
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "30"))

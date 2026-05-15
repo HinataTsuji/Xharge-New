@@ -7,6 +7,7 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
+from solar_backend.core.config import settings
 from solar_backend.core.exceptions import InferenceError
 from solar_backend.pipelines.polygon_extraction import polygon_from_mask
 from solar_backend.utils.geometry import polygon_to_mask
@@ -44,7 +45,7 @@ def refine_roof_with_sam2(
         from sam2.build_sam import build_sam2  # type: ignore
         from sam2.sam2_image_predictor import SAM2ImagePredictor  # type: ignore
 
-        predictor = SAM2ImagePredictor(build_sam2("sam2_hiera_l.yaml", "sam2_hiera_large.pt"))
+        predictor = SAM2ImagePredictor(build_sam2(settings.sam2_model_config, settings.sam2_checkpoint_path))
         predictor.set_image(cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB))
         point_coords = np.array(prompt_polygon, dtype=np.float32)
         point_labels = np.ones((point_coords.shape[0],), dtype=np.int32)

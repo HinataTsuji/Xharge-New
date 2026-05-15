@@ -16,5 +16,6 @@ services:
       OUTPUT_DIR: "/app/outputs"
     volumes:
       - ./outputs:/app/outputs
+    # Requires NVIDIA Container Toolkit on the host.
     gpus: all
     restart: unless-stopped

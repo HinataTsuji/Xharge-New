@@ -8,6 +8,8 @@ import numpy as np
 
 from solar_backend.pipelines.placement import PlacementResult
 
+PLACEMENT_OFFSET_TRIALS = 6
+
 
 def _window_sum(integral: np.ndarray, x: int, y: int, w: int, h: int) -> int:
     x2 = x + w
@@ -42,7 +44,7 @@ def pack_panels_opencv(
     occupancy = np.zeros_like(usable_binary, dtype=np.uint8)
     best_layout: List[dict] = []
 
-    trials = 6
+    trials = PLACEMENT_OFFSET_TRIALS
     for oy in range(trials):
         for ox in range(trials):
             placed: List[dict] = []
