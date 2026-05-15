@@ -50,7 +50,6 @@ def pack_panels_opencv(
         for ox in range(trials):
             placed: List[dict] = []
             occupancy.fill(0)
-            occ_integral = cv2.integral(occupancy)
             offset_den = max(trials - 1, 1)
             x_offset = int(round((ox / offset_den) * step_x))
             y_offset = int(round((oy / offset_den) * step_y))
@@ -60,10 +59,9 @@ def pack_panels_opencv(
                     usable_px = _window_sum(usable_integral, x, y, panel_w_px, panel_h_px)
                     if usable_px != area_px:
                         continue
-                    if _window_sum(occ_integral, x, y, panel_w_px, panel_h_px) > 0:
+                    if np.any(occupancy[y : y + panel_h_px, x : x + panel_w_px] > 0):
                         continue
                     occupancy[y : y + panel_h_px, x : x + panel_w_px] = 1
-                    occ_integral = cv2.integral(occupancy)
                     placed.append({"x": x, "y": y, "width": panel_w_px, "height": panel_h_px})
             if len(placed) > len(best_layout):
                 best_layout = placed
