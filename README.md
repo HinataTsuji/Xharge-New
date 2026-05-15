@@ -19,6 +19,68 @@
 - 🌿 **CO₂ Savings** — Based on Malaysia grid emission factor (0.585 tCO₂/MWh)
 - 📥 **Export Results** — Download optimization results as JSON
 
+## 🧠 New: AI Solar Planning Backend (FastAPI)
+
+This repository now includes a production-style backend service in `solar_backend/` for AI-assisted roof analysis and panel estimation.
+
+### Backend Endpoints
+
+- `GET /health` — Service health
+- `GET /model-info` — Model capabilities + fine-tuning and dataset recommendations
+- `POST /analyze-roof` — Upload rooftop image, detect roof/obstacles, estimate usable area, output overlay PNG
+- `POST /estimate-panels` — Compute panel layout and energy estimates from roof geometry
+
+### Backend Architecture
+
+```
+solar_backend/
+├── main.py
+├── api/
+│   ├── router.py
+│   └── routes/
+│       ├── health.py
+│       └── analysis.py
+├── core/
+│   ├── config.py
+│   ├── exceptions.py
+│   └── logging.py
+├── schemas/
+│   └── api.py
+├── services/
+│   ├── model_registry.py
+│   ├── roof_analysis_service.py
+│   └── panel_estimation_service.py
+├── pipelines/
+│   ├── preprocess.py
+│   ├── segmentation.py
+│   ├── postprocess.py
+│   ├── placement.py
+│   └── visualization.py
+└── utils/
+    ├── image.py
+    └── geometry.py
+```
+
+### Run Backend Locally
+
+```bash
+pip install -r requirements.txt
+uvicorn solar_backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Docker
+
+```bash
+docker build -t ai-solar-backend .
+docker run --rm -p 8000:8000 ai-solar-backend
+```
+
+### Example Inference Script
+
+```bash
+python scripts/example_inference.py --image /path/to/roof.png --base-url http://127.0.0.1:8000
+```
+
 ## 📋 Panel Specification
 
 | Parameter | Value |
