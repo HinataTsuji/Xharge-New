@@ -119,11 +119,16 @@ def test_estimate_panels_endpoint_opencv_backend() -> None:
             "panel_power_kw": 0.5,
         },
         "annual_yield_factor_kwh_per_kw": 1400,
-        "placement_backend": "opencv",
     }
-    response = client.post("/estimate-panels", json=payload)
+    raster_response = client.post("/estimate-panels", json=payload)
+    assert raster_response.status_code == 200
+    raster_count = raster_response.json()["data"]["estimated_panel_count"]
+
+    opencv_payload = {**payload, "placement_backend": "opencv"}
+    response = client.post("/estimate-panels", json=opencv_payload)
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "success"
     assert body["data"]["estimated_panel_count"] > 0
     assert len(body["data"]["panel_layout"]) == body["data"]["estimated_panel_count"]
+    assert body["data"]["estimated_panel_count"] >= raster_count

@@ -16,8 +16,8 @@ def clamp_polygon(points: Sequence[Point], width: int, height: int) -> List[Poin
         return []
     deduped: List[Point] = []
     for x, y in points:
-        cx = float(min(max(x, 0.0), max(width - 1, 0)))
-        cy = float(min(max(y, 0.0), max(height - 1, 0)))
+        cx = float(min(max(x, 0.0), width - 1))
+        cy = float(min(max(y, 0.0), height - 1))
         point = (round(cx, 3), round(cy, 3))
         if not deduped or deduped[-1] != point:
             deduped.append(point)

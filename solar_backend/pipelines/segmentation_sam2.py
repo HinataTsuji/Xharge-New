@@ -13,6 +13,7 @@ from solar_backend.pipelines.polygon_extraction import polygon_from_mask
 from solar_backend.utils.geometry import polygon_to_mask
 
 logger = logging.getLogger(__name__)
+# Keep confidence away from extreme values because refinement quality is heuristic and backend-dependent.
 MIN_REFINED_CONFIDENCE = 0.4
 MAX_REFINED_CONFIDENCE = 0.95
 
