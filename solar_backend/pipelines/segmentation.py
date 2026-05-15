@@ -6,11 +6,16 @@ from typing import List, Tuple
 
 import cv2
 import numpy as np
+import logging
 
 from solar_backend.core.exceptions import InferenceError
 from solar_backend.pipelines.preprocess import preprocess_for_segmentation
 from solar_backend.services.model_registry import model_registry
-from solar_backend.utils.geometry import bbox_from_mask, mask_to_largest_polygon, polygon_to_mask
+from solar_backend.utils.geometry import mask_to_largest_polygon, polygon_to_mask
+
+logger = logging.getLogger(__name__)
+MIN_OBSTACLE_AREA_PX = 80.0
+MAX_OBSTACLE_AREA_RATIO = 0.12
 
 
 @dataclass
@@ -90,7 +95,7 @@ def detect_obstacles(image_bgr: np.ndarray, roof_mask: np.ndarray) -> List[dict]
     roof_area = max(float(np.count_nonzero(roof_mask)), 1.0)
     for contour in contours:
         area = float(cv2.contourArea(contour))
-        if area < 80 or area > roof_area * 0.12:
+        if area < MIN_OBSTACLE_AREA_PX or area > roof_area * MAX_OBSTACLE_AREA_RATIO:
             continue
 
         x, y, w, h = cv2.boundingRect(contour)
@@ -122,7 +127,8 @@ def segment_roof_and_obstacles(image_bgr: np.ndarray, backend: str = "auto") -> 
     if backend in {"auto", "qwen_vl"}:
         try:
             roof_mask, roof_polygon, roof_confidence = _qwen_roof_segmentation(image_bgr)
-        except Exception:
+        except (InferenceError, RuntimeError, ValueError) as exc:
+            logger.warning("Qwen backend failed, switching to classical segmentation: %s", exc)
             roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)
     else:
         roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)

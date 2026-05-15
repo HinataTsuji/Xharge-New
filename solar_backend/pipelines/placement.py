@@ -42,12 +42,15 @@ def pack_panels(
     placed: List[dict] = []
     occupied = np.zeros_like(usable_mask, dtype=np.uint8)
 
-    for y in range(0, max(h - panel_h_px + 1, 1), max(step_y, 1)):
-        for x in range(0, max(w - panel_w_px + 1, 1), max(step_x, 1)):
+    y_range = range(0, max(h - panel_h_px + 1, 1), max(step_y, 1))
+    x_range = range(0, max(w - panel_w_px + 1, 1), max(step_x, 1))
+
+    for y in y_range:
+        for x in x_range:
             window = usable_mask[y : y + panel_h_px, x : x + panel_w_px]
             if window.shape[0] != panel_h_px or window.shape[1] != panel_w_px:
                 continue
-            if np.count_nonzero(window) != panel_w_px * panel_h_px:
+            if not np.all(window > 0):
                 continue
 
             occ_window = occupied[y : y + panel_h_px, x : x + panel_w_px]

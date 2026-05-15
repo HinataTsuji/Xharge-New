@@ -12,6 +12,7 @@ from PIL import Image
 
 
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+BGR_DARK_GRAY = (30, 30, 30)
 
 
 def decode_image_bytes(data: bytes) -> np.ndarray:
@@ -52,7 +53,7 @@ def png_bytes_to_base64(data: bytes) -> str:
     return base64.b64encode(data).decode("utf-8")
 
 
-def blank_canvas(width: int, height: int, color: Tuple[int, int, int] = (30, 30, 30)) -> np.ndarray:
+def blank_canvas(width: int, height: int, color: Tuple[int, int, int] = BGR_DARK_GRAY) -> np.ndarray:
     """Create blank BGR canvas."""
     canvas = np.zeros((height, width, 3), dtype=np.uint8)
     canvas[:] = color

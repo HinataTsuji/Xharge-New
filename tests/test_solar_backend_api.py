@@ -9,11 +9,12 @@ from solar_backend.services.model_registry import ModelHandle, model_registry
 
 
 client = TestClient(app)
+BACKGROUND_GRAY = (90, 90, 90)
 
 
 def _make_test_image_bytes() -> bytes:
     img = np.zeros((240, 320, 3), dtype=np.uint8)
-    img[:] = (90, 90, 90)
+    img[:] = BACKGROUND_GRAY
     roof = np.array([[20, 20], [300, 20], [280, 210], [30, 220]], dtype=np.int32)
     cv2.fillPoly(img, [roof], color=(180, 180, 180))
     cv2.rectangle(img, (140, 100), (180, 140), color=(35, 35, 35), thickness=-1)
@@ -30,7 +31,7 @@ def test_health_endpoint() -> None:
     assert payload["service"] == "AI Solar Planner API"
 
 
-def test_model_info_endpoint_without_loading_real_model(monkeypatch) -> None:
+def test_model_info_endpoint_with_mocked_model(monkeypatch) -> None:
     monkeypatch.setattr(
         model_registry,
         "load_qwen_vl",

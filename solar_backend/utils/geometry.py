@@ -8,6 +8,7 @@ import numpy as np
 
 
 PointTuple = Tuple[float, float]
+MIN_POLYGON_AREA_PX = 250.0
 
 
 def polygon_area(points: Sequence[PointTuple]) -> float:
@@ -28,7 +29,7 @@ def polygon_to_mask(points: Sequence[PointTuple], width: int, height: int) -> np
     return mask
 
 
-def mask_to_largest_polygon(mask: np.ndarray, min_area: float = 250.0) -> List[PointTuple]:
+def mask_to_largest_polygon(mask: np.ndarray, min_area: float = MIN_POLYGON_AREA_PX) -> List[PointTuple]:
     """Extract the largest polygon contour from a binary mask."""
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:

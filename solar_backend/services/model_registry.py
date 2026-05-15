@@ -65,7 +65,7 @@ class ModelRegistry:
                 device=device,
                 ready=True,
             )
-        except Exception as exc:  # pragma: no cover - model availability is environment dependent
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:  # pragma: no cover - env dependent
             logger.warning("Qwen2.5-VL unavailable, falling back to classical CV path: %s", exc)
             self._qwen = ModelHandle(
                 name=settings.model_name,
@@ -83,6 +83,11 @@ class ModelRegistry:
         max_new_tokens: int = 256,
     ) -> List[dict[str, Any]]:
         """Run batched VLM inference and parse JSON outputs.
+
+        Args:
+            prompt: Text instruction sent to Qwen-VL.
+            images: Iterable of PIL images or numpy RGB arrays (H, W, 3).
+            max_new_tokens: Generation budget for each item in batch.
 
         If model is unavailable, raises InferenceError so caller can fallback safely.
         """

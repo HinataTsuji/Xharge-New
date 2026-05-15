@@ -8,6 +8,8 @@ import numpy as np
 
 from solar_backend.utils.geometry import to_int_points
 
+USABLE_MASK_ALPHA = 120
+
 
 def draw_segmentation_overlay(
     image_bgr: np.ndarray,
@@ -24,7 +26,7 @@ def draw_segmentation_overlay(
 
     usable_tint = np.zeros_like(overlay)
     usable_tint[:, :] = (0, 180, 0)
-    alpha = (usable_mask > 0).astype(np.uint8) * 120
+    alpha = (usable_mask > 0).astype(np.uint8) * USABLE_MASK_ALPHA
     overlay = np.where(alpha[..., None] > 0, cv2.addWeighted(overlay, 0.7, usable_tint, 0.3, 0), overlay)
 
     for poly in obstacle_polygons:
@@ -45,6 +47,6 @@ def draw_panel_layout_overlay(image_bgr: np.ndarray, panel_layout: Iterable[dict
         y = int(panel["y"])
         w = int(panel["width"])
         h = int(panel["height"])
-        cv2.rectangle(overlay, (x, y), (x + w, y + h), color=(255, 140, 0), thickness=2)
         cv2.rectangle(overlay, (x, y), (x + w, y + h), color=(255, 140, 0), thickness=-1)
+        cv2.rectangle(overlay, (x, y), (x + w, y + h), color=(255, 255, 255), thickness=1)
     return cv2.addWeighted(image_bgr, 0.65, overlay, 0.35, 0)

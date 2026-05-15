@@ -15,7 +15,8 @@ def obstacles_to_mask(obstacles: Iterable[dict], width: int, height: int) -> np.
     for obs in obstacles:
         poly = obs.get("polygon") or []
         if len(poly) >= 3:
-            contour = np.array([(int(round(x)), int(round(y))) for x, y in poly], dtype=np.int32).reshape((-1, 1, 2))
+            points = [(int(round(x)), int(round(y))) for x, y in poly]
+            contour = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
             cv2.fillPoly(mask, [contour], color=255)
             continue
 
