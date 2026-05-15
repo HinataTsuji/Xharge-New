@@ -40,7 +40,11 @@ async def analyze_roof(
 
     try:
         image_bgr = decode_image_bytes(image_bytes)
-        output = roof_analysis_service.analyze(image_bgr=image_bgr, meters_per_pixel=meters_per_pixel, backend=backend)
+        output = await roof_analysis_service.analyze_async(
+            image_bgr=image_bgr,
+            meters_per_pixel=meters_per_pixel,
+            backend=backend,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -95,6 +99,7 @@ def estimate_panels(payload: EstimatePanelsRequest) -> EstimatePanelsResponse:
         col_spacing_m=payload.panel_config.col_spacing_m,
         panel_power_kw=payload.panel_config.panel_power_kw,
         annual_yield_factor_kwh_per_kw=payload.annual_yield_factor_kwh_per_kw,
+        placement_backend=payload.placement_backend,
     )
 
     return EstimatePanelsResponse(

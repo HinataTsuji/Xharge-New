@@ -96,3 +96,32 @@ def test_estimate_panels_endpoint() -> None:
     assert body["data"]["estimated_panel_count"] >= 0
     assert body["data"]["estimated_power_kw"] >= 0
     assert body["data"]["panel_layout_overlay_url"].startswith("/static/")
+
+
+def test_estimate_panels_endpoint_opencv_backend() -> None:
+    payload = {
+        "image_width": 240,
+        "image_height": 240,
+        "roof_polygon": [
+            {"x": 10, "y": 10},
+            {"x": 230, "y": 10},
+            {"x": 230, "y": 230},
+            {"x": 10, "y": 230},
+        ],
+        "obstacles": [],
+        "meters_per_pixel": 0.1,
+        "panel_config": {
+            "panel_width_m": 1.0,
+            "panel_height_m": 1.5,
+            "row_spacing_m": 0.2,
+            "col_spacing_m": 0.2,
+            "panel_power_kw": 0.5,
+        },
+        "annual_yield_factor_kwh_per_kw": 1400,
+        "placement_backend": "opencv",
+    }
+    response = client.post("/estimate-panels", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["data"]["estimated_panel_count"] >= 0

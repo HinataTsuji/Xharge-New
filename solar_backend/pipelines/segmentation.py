@@ -9,9 +9,12 @@ import numpy as np
 import logging
 
 from solar_backend.core.exceptions import InferenceError
+from solar_backend.pipelines.polygon_extraction import polygon_from_mask
 from solar_backend.pipelines.preprocess import preprocess_for_segmentation
-from solar_backend.services.model_registry import model_registry
-from solar_backend.utils.geometry import mask_to_largest_polygon, polygon_to_mask
+from solar_backend.pipelines.segmentation_fusion import segment_roof_with_qwen_sam2
+from solar_backend.pipelines.segmentation_qwen import segment_roof_with_qwen
+from solar_backend.pipelines.segmentation_sam2 import refine_roof_with_sam2
+from solar_backend.utils.geometry import polygon_to_mask
 
 logger = logging.getLogger(__name__)
 MIN_OBSTACLE_AREA_PX = 80.0
@@ -33,7 +36,7 @@ def _classical_roof_segmentation(image_bgr: np.ndarray) -> tuple[np.ndarray, Lis
     edges = cv2.dilate(edges, np.ones((5, 5), dtype=np.uint8), iterations=2)
     edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, np.ones((9, 9), dtype=np.uint8), iterations=2)
 
-    roof_polygon = mask_to_largest_polygon(edges, min_area=400.0)
+    roof_polygon = polygon_from_mask(edges, min_area=400.0)
     if not roof_polygon:
         h, w = gray.shape
         roof_polygon = [
@@ -48,27 +51,6 @@ def _classical_roof_segmentation(image_bgr: np.ndarray) -> tuple[np.ndarray, Lis
 
     roof_mask = polygon_to_mask(roof_polygon, gray.shape[1], gray.shape[0])
     return roof_mask, roof_polygon, confidence
-
-
-def _qwen_roof_segmentation(image_bgr: np.ndarray) -> tuple[np.ndarray, List[Tuple[float, float]], float]:
-    prompt = (
-        "Return JSON only with keys: roof_detected (bool), confidence (0-1), "
-        "roof_polygon (list of [x,y] absolute pixel points)."
-    )
-    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    result = model_registry.infer_qwen_structured(prompt=prompt, images=[image_rgb], max_new_tokens=200)[0]
-
-    raw_polygon = result.get("roof_polygon", [])
-    points: List[Tuple[float, float]] = []
-    for p in raw_polygon:
-        if isinstance(p, (list, tuple)) and len(p) == 2:
-            points.append((float(p[0]), float(p[1])))
-    if len(points) < 3:
-        raise InferenceError("Qwen response did not include a valid roof polygon")
-    h, w = image_bgr.shape[:2]
-    roof_mask = polygon_to_mask(points, w, h)
-    confidence = float(result.get("confidence", 0.75))
-    return roof_mask, points, max(0.0, min(1.0, confidence))
 
 
 def detect_obstacles(image_bgr: np.ndarray, roof_mask: np.ndarray) -> List[dict]:
@@ -124,12 +106,38 @@ def segment_roof_and_obstacles(image_bgr: np.ndarray, backend: str = "auto") -> 
     roof_polygon: List[Tuple[float, float]]
     roof_confidence: float
 
-    if backend in {"auto", "qwen_vl"}:
+    if backend == "sam2_qwen":
         try:
-            roof_mask, roof_polygon, roof_confidence = _qwen_roof_segmentation(image_bgr)
+            roof_mask, roof_polygon, roof_confidence = segment_roof_with_qwen_sam2(image_bgr)
+        except (InferenceError, RuntimeError, ValueError) as exc:
+            logger.warning("SAM2+Qwen backend failed, switching to Qwen/classical chain: %s", exc)
+            try:
+                roof_mask, roof_polygon, roof_confidence = segment_roof_with_qwen(image_bgr)
+            except (InferenceError, RuntimeError, ValueError):
+                roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)
+    elif backend == "sam2":
+        try:
+            _, base_polygon, base_confidence = _classical_roof_segmentation(image_bgr)
+            roof_mask, roof_polygon, sam2_confidence = refine_roof_with_sam2(image_bgr, base_polygon)
+            roof_confidence = max(base_confidence, sam2_confidence)
+        except (InferenceError, RuntimeError, ValueError) as exc:
+            logger.warning("SAM2 backend failed, switching to classical segmentation: %s", exc)
+            roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)
+    elif backend == "qwen_vl":
+        try:
+            roof_mask, roof_polygon, roof_confidence = segment_roof_with_qwen(image_bgr)
         except (InferenceError, RuntimeError, ValueError) as exc:
             logger.warning("Qwen backend failed, switching to classical segmentation: %s", exc)
             roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)
+    elif backend == "auto":
+        try:
+            roof_mask, roof_polygon, roof_confidence = segment_roof_with_qwen_sam2(image_bgr)
+        except (InferenceError, RuntimeError, ValueError) as exc:
+            logger.warning("Auto backend SAM2+Qwen failed, switching to Qwen/classical chain: %s", exc)
+            try:
+                roof_mask, roof_polygon, roof_confidence = segment_roof_with_qwen(image_bgr)
+            except (InferenceError, RuntimeError, ValueError):
+                roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)
     else:
         roof_mask, roof_polygon, roof_confidence = _classical_roof_segmentation(image_bgr)
 

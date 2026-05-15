@@ -27,8 +27,8 @@ This repository now includes a production-style backend service in `solar_backen
 
 - `GET /health` — Service health
 - `GET /model-info` — Model capabilities + fine-tuning and dataset recommendations
-- `POST /analyze-roof` — Upload rooftop image, detect roof/obstacles, estimate usable area, output overlay PNG
-- `POST /estimate-panels` — Compute panel layout and energy estimates from roof geometry
+- `POST /analyze-roof` — Upload rooftop image, detect roof/obstacles, estimate usable area, output overlay PNG (`backend`: `auto|classical|qwen_vl|sam2|sam2_qwen`)
+- `POST /estimate-panels` — Compute panel layout and energy estimates from roof geometry (`placement_backend`: `raster|opencv`)
 
 ### Backend Architecture
 
@@ -50,11 +50,18 @@ solar_backend/
 │   ├── model_registry.py
 │   ├── roof_analysis_service.py
 │   └── panel_estimation_service.py
+├── training/
+│   └── lora_finetune.py
 ├── pipelines/
 │   ├── preprocess.py
 │   ├── segmentation.py
+│   ├── segmentation_qwen.py
+│   ├── segmentation_sam2.py
+│   ├── segmentation_fusion.py
+│   ├── polygon_extraction.py
 │   ├── postprocess.py
 │   ├── placement.py
+│   ├── placement_opencv.py
 │   └── visualization.py
 └── utils/
     ├── image.py
@@ -75,10 +82,35 @@ docker build -t ai-solar-backend .
 docker run --rm -p 8000:8000 ai-solar-backend
 ```
 
+### Docker Compose (GPU)
+
+```bash
+docker compose up --build
+```
+
+Optional environment variables:
+- `MODEL_DEVICE` (default `cuda`)
+- `QWEN_VL_MODEL`
+- `QWEN_LORA_ADAPTER` (path to mounted LoRA adapter directory)
+- `QWEN_LORA_MERGE` (`true|false`)
+
 ### Example Inference Script
 
 ```bash
 python scripts/example_inference.py --image /path/to/roof.png --base-url http://127.0.0.1:8000
+```
+
+### LoRA Fine-Tuning Scaffold (Qwen2.5-VL)
+
+```bash
+pip install peft accelerate
+python -m solar_backend.training.lora_finetune --dataset-path /path/to/train.jsonl --output-dir artifacts/qwen-lora
+```
+
+Then start backend with adapter:
+
+```bash
+QWEN_LORA_ADAPTER=artifacts/qwen-lora uvicorn solar_backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## 📋 Panel Specification

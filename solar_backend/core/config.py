@@ -15,6 +15,8 @@ class Settings:
     model_name: str = os.getenv("QWEN_VL_MODEL", "Qwen/Qwen2.5-VL-3B-Instruct")
     model_dtype: str = os.getenv("MODEL_DTYPE", "float16")
     device: str = os.getenv("MODEL_DEVICE", "cuda")
+    qwen_lora_adapter_path: str | None = os.getenv("QWEN_LORA_ADAPTER")
+    qwen_lora_merge: bool = os.getenv("QWEN_LORA_MERGE", "false").lower() in {"1", "true", "yes"}
     output_dir: Path = Path(os.getenv("OUTPUT_DIR", "outputs"))
     static_url_prefix: str = "/static"
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "30"))

@@ -47,6 +47,7 @@ def main() -> None:
                 "panel_power_kw": 0.62,
             },
             "annual_yield_factor_kwh_per_kw": 1450.0,
+            "placement_backend": "opencv",
         }
         estimate = client.post(f"{args.base_url}/estimate-panels", json=estimate_payload)
         estimate.raise_for_status()

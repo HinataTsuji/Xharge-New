@@ -25,7 +25,8 @@ def model_info() -> ModelInfoResponse:
             "primary_model": qwen_handle.name,
             "device": qwen_handle.device,
             "qwen_ready": qwen_handle.ready,
-            "supported_backends": ["qwen_vl", "sam2", "yolov8_seg", "detectron2", "classical_cv"],
+            "supported_backends": ["qwen_vl", "sam2", "sam2_qwen", "yolov8_seg", "detectron2", "classical_cv"],
+            "placement_backends": ["raster", "opencv"],
         },
         recommendations={
             "comparison": {
