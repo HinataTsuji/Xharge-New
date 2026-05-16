@@ -52,14 +52,14 @@ async def analyze_roof_async(base_url: str, image_bytes: bytes, meters_per_pixel
         return response.json()
 
 
-def run_async(coro: Any) -> Any:
+def run_async(coroutine: Any) -> Any:
     """Safely run an async coroutine from Streamlit's sync execution context."""
     try:
-        return asyncio.run(coro)
+        return asyncio.run(coroutine)
     except RuntimeError:
         loop = asyncio.new_event_loop()
         try:
-            return loop.run_until_complete(coro)
+            return loop.run_until_complete(coroutine)
         finally:
             loop.close()
 
@@ -382,7 +382,7 @@ if uploaded is not None:
                 st.session_state["polygon_sync_payload"] = json.dumps(st.session_state["roof_polygon"])
                 st.session_state["last_polygon_sync_payload"] = st.session_state["polygon_sync_payload"]
             except (httpx.HTTPError, RuntimeError, ValueError) as exc:
-                st.session_state["analysis_error"] = str(exc)
+                st.session_state["analysis_error"] = f"Roof analysis failed: {exc}"
 
         st.rerun()
 
@@ -390,7 +390,7 @@ if st.session_state["image_data_uri"] is None:
     st.info("Upload an image to begin. The app will auto-call `/analyze-roof` with `backend=qwen_vl`.")
 else:
     if st.session_state["analysis_error"]:
-        st.error(f"Roof analysis failed: {st.session_state['analysis_error']}")
+        st.error(st.session_state["analysis_error"])
 
     st.markdown(
         """
@@ -442,10 +442,10 @@ else:
                 )
                 st.session_state["estimate_error"] = None
             except (httpx.HTTPError, RuntimeError, ValueError) as exc:
-                st.session_state["estimate_error"] = str(exc)
+                st.session_state["estimate_error"] = f"Panel estimation failed: {exc}"
 
     if st.session_state["estimate_error"]:
-        st.error(f"Panel estimation failed: {st.session_state['estimate_error']}")
+        st.error(st.session_state["estimate_error"])
 
     if st.session_state["estimate_result"]:
         data = st.session_state["estimate_result"].get("data", {})
