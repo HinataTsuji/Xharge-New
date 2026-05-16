@@ -90,9 +90,27 @@ docker compose up --build
 
 Optional environment variables:
 - `MODEL_DEVICE` (default `cuda`)
-- `QWEN_VL_MODEL`
+- `QWEN_VL_MODEL` (primary model override, tried first)
+- `QWEN_VL_MODEL_CANDIDATES` (comma-separated fallback model IDs/paths)
+- `QWEN_VL_REVISION` (optional revision/commit pin for reproducible model loading)
+- `QWEN_VL_LOCAL_FILES_ONLY` (`true|false`, load only local cache/snapshots)
+- `QWEN_VL_MODEL_LOAD_TIMEOUT_SECONDS` (HF Hub download timeout, default `30`)
+- `QWEN_VL_MODEL_LOAD_ETAG_TIMEOUT_SECONDS` (HF Hub metadata timeout, default `10`)
 - `QWEN_LORA_ADAPTER` (path to mounted LoRA adapter directory)
 - `QWEN_LORA_MERGE` (`true|false`)
+
+Model loading strategy:
+- The backend always tries `QWEN_VL_MODEL` first.
+- It then tries each entry from `QWEN_VL_MODEL_CANDIDATES` in order until one fully loads.
+- If all candidates fail, Qwen backend is marked unavailable (`qwen_ready=false`) and classical CV fallback remains active.
+- When safetensors artifacts are unavailable for a candidate, loading automatically retries with non-safetensors weights.
+
+Recommended reliability workflow when `.safetensors` is missing or network is unstable:
+1. Download and cache at least one known-good model snapshot in advance.
+2. Set `QWEN_VL_LOCAL_FILES_ONLY=true` in production/offline environments.
+3. Set `QWEN_VL_MODEL` to your preferred local path/ID, and `QWEN_VL_MODEL_CANDIDATES` to additional local snapshots.
+4. Pin `QWEN_VL_REVISION` where possible for reproducible startup.
+5. Tune `QWEN_VL_MODEL_LOAD_TIMEOUT_SECONDS` and `QWEN_VL_MODEL_LOAD_ETAG_TIMEOUT_SECONDS` for your network conditions.
 
 ### Example Inference Script
 
@@ -106,6 +124,14 @@ python scripts/example_inference.py --image /path/to/roof.png --base-url http://
 pip install peft accelerate
 python -m solar_backend.training.lora_finetune --dataset-path /path/to/train.jsonl --output-dir artifacts/qwen-lora
 ```
+
+Fine-tuning supports the same fallback and reliability controls:
+- `--model-name` (primary)
+- `--model-candidates` (fallback list)
+- `--model-revision`
+- `--model-local-files-only`
+- `--model-load-timeout-seconds`
+- `--model-load-etag-timeout-seconds`
 
 Then start backend with adapter:
 

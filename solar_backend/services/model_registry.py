@@ -4,8 +4,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Iterable, List
+from typing import Any, Iterable, Iterator, List
 
 from solar_backend.core.config import settings
 from solar_backend.core.exceptions import InferenceError
@@ -40,46 +42,125 @@ class ModelRegistry:
             return "cuda"
         return "cpu"
 
+    @staticmethod
+    def _build_pretrained_kwargs(*, local_files_only: bool, revision: str | None) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {"local_files_only": local_files_only}
+        if revision:
+            kwargs["revision"] = revision
+        return kwargs
+
+    @staticmethod
+    def _should_retry_without_safetensors(exc: Exception) -> bool:
+        message = str(exc).lower()
+        return "safetensors" in message and ("not found" in message or "missing" in message or "unable to" in message)
+
+    @staticmethod
+    @contextmanager
+    def _with_hf_timeouts() -> Iterator[None]:
+        timeout_vars = {
+            "HF_HUB_DOWNLOAD_TIMEOUT": str(settings.model_load_timeout_seconds),
+            "HF_HUB_ETAG_TIMEOUT": str(settings.model_load_etag_timeout_seconds),
+        }
+        previous = {name: os.environ.get(name) for name in timeout_vars}
+        os.environ.update(timeout_vars)
+        try:
+            yield
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+    def _try_load_qwen_candidate(
+        self,
+        *,
+        candidate: str,
+        device: str,
+        dtype: Any,
+        AutoProcessor: Any,
+        Qwen2_5_VLForConditionalGeneration: Any,
+    ) -> ModelHandle:
+        base_kwargs = self._build_pretrained_kwargs(
+            local_files_only=settings.model_local_files_only,
+            revision=settings.model_revision,
+        )
+        model_kwargs = {
+            "torch_dtype": dtype,
+            "device_map": "auto" if device == "cuda" else None,
+            **base_kwargs,
+        }
+        processor_kwargs = dict(base_kwargs)
+
+        with self._with_hf_timeouts():
+            try:
+                model = Qwen2_5_VLForConditionalGeneration.from_pretrained(candidate, **model_kwargs)
+            except Exception as exc:
+                if not self._should_retry_without_safetensors(exc):
+                    raise
+                logger.warning("Retrying model '%s' with use_safetensors=False due to load error: %s", candidate, exc)
+                model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+                    candidate,
+                    use_safetensors=False,
+                    **model_kwargs,
+                )
+            processor = AutoProcessor.from_pretrained(candidate, **processor_kwargs)
+
+        if settings.qwen_lora_adapter_path:
+            try:
+                from peft import PeftModel  # type: ignore
+
+                model = PeftModel.from_pretrained(model, settings.qwen_lora_adapter_path)
+                if settings.qwen_lora_merge and hasattr(model, "merge_and_unload"):
+                    model = model.merge_and_unload()
+                logger.info("Loaded Qwen LoRA adapter from %s", settings.qwen_lora_adapter_path)
+            except Exception as adapter_exc:  # pragma: no cover - optional dependency path
+                logger.warning("Failed to load LoRA adapter %s: %s", settings.qwen_lora_adapter_path, adapter_exc)
+
+        if device != "cuda":
+            model = model.to(device)
+        return ModelHandle(
+            name=candidate,
+            model=model,
+            processor=processor,
+            device=device,
+            ready=True,
+        )
+
     def load_qwen_vl(self) -> ModelHandle:
         """Load Qwen2.5-VL model with transformers when available."""
         if self._qwen is not None:
             return self._qwen
 
         device = self._resolve_device(settings.device)
+        loaded_candidate = settings.model_name
         try:
             import torch  # type: ignore
             from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration  # type: ignore
 
             dtype = torch.float16 if settings.model_dtype == "float16" and device == "cuda" else torch.float32
-            model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-                settings.model_name,
-                torch_dtype=dtype,
-                device_map="auto" if device == "cuda" else None,
-            )
-            if settings.qwen_lora_adapter_path:
+            candidate_failures: list[str] = []
+            for candidate in settings.model_candidates:
+                loaded_candidate = candidate
                 try:
-                    from peft import PeftModel  # type: ignore
-
-                    model = PeftModel.from_pretrained(model, settings.qwen_lora_adapter_path)
-                    if settings.qwen_lora_merge and hasattr(model, "merge_and_unload"):
-                        model = model.merge_and_unload()
-                    logger.info("Loaded Qwen LoRA adapter from %s", settings.qwen_lora_adapter_path)
-                except Exception as adapter_exc:  # pragma: no cover - optional dependency path
-                    logger.warning("Failed to load LoRA adapter %s: %s", settings.qwen_lora_adapter_path, adapter_exc)
-            if device != "cuda":
-                model = model.to(device)
-            processor = AutoProcessor.from_pretrained(settings.model_name)
-            self._qwen = ModelHandle(
-                name=settings.model_name,
-                model=model,
-                processor=processor,
-                device=device,
-                ready=True,
-            )
-        except (ImportError, OSError, RuntimeError, ValueError) as exc:  # pragma: no cover - env dependent
+                    self._qwen = self._try_load_qwen_candidate(
+                        candidate=candidate,
+                        device=device,
+                        dtype=dtype,
+                        AutoProcessor=AutoProcessor,
+                        Qwen2_5_VLForConditionalGeneration=Qwen2_5_VLForConditionalGeneration,
+                    )
+                    logger.info("Loaded Qwen2.5-VL model candidate '%s' on %s", candidate, device)
+                    return self._qwen
+                except Exception as exc:  # pragma: no cover - env dependent
+                    reason = f"{candidate}: {exc.__class__.__name__}: {exc}"
+                    candidate_failures.append(reason)
+                    logger.warning("Qwen model candidate failed (%s)", reason)
+            raise RuntimeError("; ".join(candidate_failures) if candidate_failures else "No model candidates configured")
+        except (ImportError, OSError, RuntimeError, ValueError, TimeoutError, ConnectionError) as exc:  # pragma: no cover - env dependent
             logger.warning("Qwen2.5-VL unavailable, falling back to classical CV path: %s", exc)
             self._qwen = ModelHandle(
-                name=settings.model_name,
+                name=loaded_candidate,
                 model=None,
                 processor=None,
                 device=device,
