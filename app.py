@@ -381,7 +381,7 @@ if uploaded is not None:
                 st.session_state["roof_polygon"] = parse_backend_polygon(response_json)
                 st.session_state["polygon_sync_payload"] = json.dumps(st.session_state["roof_polygon"])
                 st.session_state["last_polygon_sync_payload"] = st.session_state["polygon_sync_payload"]
-            except Exception as exc:  # noqa: BLE001
+            except (httpx.HTTPError, RuntimeError, ValueError) as exc:
                 st.session_state["analysis_error"] = str(exc)
 
         st.rerun()
@@ -441,7 +441,7 @@ else:
                     panel_power_kw,
                 )
                 st.session_state["estimate_error"] = None
-            except Exception as exc:  # noqa: BLE001
+            except (httpx.HTTPError, RuntimeError, ValueError) as exc:
                 st.session_state["estimate_error"] = str(exc)
 
     if st.session_state["estimate_error"]:
