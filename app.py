@@ -382,6 +382,8 @@ if uploaded is not None:
                 st.session_state["polygon_sync_payload"] = json.dumps(st.session_state["roof_polygon"])
                 st.session_state["last_polygon_sync_payload"] = st.session_state["polygon_sync_payload"]
             except (httpx.HTTPError, RuntimeError, ValueError) as exc:
+                import traceback
+                traceback.print_exc()  # This will print the full traceback to your console
                 st.session_state["analysis_error"] = f"Roof analysis failed: {exc}"
 
         st.rerun()
