@@ -31,8 +31,8 @@ def _override_settings(**overrides):
 
 def _install_fake_model_modules(monkeypatch, model_loader, processor_loader) -> None:
     fake_torch = types.ModuleType("torch")
-    fake_torch.float16 = "float16"
-    fake_torch.float32 = "float32"
+    fake_torch.float16 = object()
+    fake_torch.float32 = object()
     fake_torch.cuda = types.SimpleNamespace(is_available=lambda: False)
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
 

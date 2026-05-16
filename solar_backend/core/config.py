@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 
 
@@ -46,7 +47,7 @@ class Settings:
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "30"))
     default_meters_per_pixel: float = float(os.getenv("DEFAULT_METERS_PER_PIXEL", "0.1"))
 
-    @property
+    @cached_property
     def model_candidates(self) -> tuple[str, ...]:
         candidates: list[str] = []
         for candidate in [self.model_name, *self.model_candidates_raw.split(",")]:

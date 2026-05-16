@@ -110,7 +110,7 @@ def main() -> None:
             failures.append(f"{candidate}: {exc.__class__.__name__}: {exc}")
 
     if model is None or processor is None or selected_model_name is None:
-        joined = "; ".join(failures) if failures else "No valid model candidates were provided"
+        joined = "; ".join(failures) if failures else "No model candidates configured"
         raise RuntimeError(f"Failed to load any base model candidate for fine-tuning: {joined}")
 
     lora_cfg = LoraConfig(
